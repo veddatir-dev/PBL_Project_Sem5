@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { motion } from 'motion/react'
 import * as api from '@/lib/api'
 import { NodeMark } from '@/components/ui-kit'
 import { Landing } from '@/components/screens/landing'
@@ -71,17 +71,20 @@ export default function Page() {
     return <Dashboard key="dash" />
   }
 
+  /*
+   * Keyed mount transition: the incoming screen animates in, the outgoing one
+   * unmounts in a normal commit. No AnimatePresence exit tracking here — its
+   * synchronous removal unmounts the R3F roots mid-render and trips React's
+   * "unmount a root while React was already rendering" warning.
+   */
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={path || 'boot'}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -6 }}
-        transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-      >
-        {render()}
-      </motion.div>
-    </AnimatePresence>
+    <motion.div
+      key={path || 'boot'}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {render()}
+    </motion.div>
   )
 }

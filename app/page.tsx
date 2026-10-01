@@ -1,190 +1,87 @@
 'use client'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Activity, ArrowLeft, ArrowRight, BarChart3, BookOpen, Check, ChevronDown, CircleHelp, Code2, Command, Compass, Flame, GraduationCap, LayoutDashboard, Library, Lightbulb, LogOut, Menu, Moon, Play, RotateCcw, Search, Settings, Sparkles, Sun, Trophy, Users, X, Zap } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import * as api from '@/lib/api'
-import type { ApiSyllabusDoc, ApiTopic, CodeLanguage, FacultyOverview, QuizResult, StudentProgress } from '@/lib/api'
-import { cn } from '@/lib/utils'
+import { NodeMark } from '@/components/ui-kit'
+import { Landing } from '@/components/screens/landing'
+import { Login } from '@/components/screens/login'
+import { Dashboard } from '@/components/screens/dashboard'
+import { Syllabus } from '@/components/screens/syllabus'
+import { TopicDetail } from '@/components/screens/topic'
+import { Visualizer } from '@/components/screens/visualizer'
+import { Quiz } from '@/components/screens/quiz'
+import { CodeWorkspace } from '@/components/screens/code'
+import { Faculty } from '@/components/screens/faculty'
 
-const nav = [{ label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' }, { label: 'Syllabus', icon: Library, href: '/syllabus' }, { label: 'My Progress', icon: BarChart3, href: '/dashboard' }]
-const ALGORITHMS = ['bfs', 'dfs', 'prim', 'kruskal', 'bst', 'astar']
-const SIM_NAMES: Record<string, string> = { bfs: 'Breadth-First Search', dfs: 'Depth-First Search', prim: "Prim's Minimum Spanning Tree", kruskal: "Kruskal's Algorithm", bst: 'BST Insert & Traverse', astar: 'A* Search' }
-const LANGUAGES: { id: CodeLanguage; label: string }[] = [
-  { id: 'python', label: 'Python 3' },
-  { id: 'cpp', label: 'C++' },
-  { id: 'c', label: 'C' },
-  { id: 'java', label: 'Java' },
-]
-const COLORS = ['indigo', 'emerald', 'amber'] as const
+/*
+ * Client-side router. The [...slug] catch-all re-exports this page, so every
+ * URL resolves here; screens mount per pathname with a shared transition.
+ */
 
-function Logo(){ return <div className="flex items-center gap-3"><div className="flex size-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-200"><Command className="size-5"/></div><div><div className="font-bold tracking-tight">AlgoLearn</div><div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Adaptive learning</div></div></div> }
-function initials(name?: string){ return (name||'AS').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase() }
+function Boot() {
+  return (
+    <div className="grid min-h-screen place-items-center bg-bg">
+      <div className="flex flex-col items-center gap-5">
+        <NodeMark size={40} />
+        <div className="font-mono text-[10px] tracking-[0.26em] text-ink-3">ESTABLISHING SESSION</div>
+        <div className="signal-line h-px w-44 bg-line-2" />
+      </div>
+    </div>
+  )
+}
 
-function AppShell({children, faculty=false}:{children:React.ReactNode,faculty?:boolean}){ const [dark,setDark]=useState(false); const [open,setOpen]=useState(false); const path=typeof window!=='undefined'?window.location.pathname:'/dashboard'; const user=api.getStoredUser(); return <div className={cn('min-h-screen bg-[#f7f8fc] text-slate-900',dark&&'dark bg-slate-950 text-slate-100')}><aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-slate-200 bg-white px-5 py-6 lg:block dark:border-slate-800 dark:bg-slate-900"><Logo/><div className="mt-12 text-[11px] font-semibold uppercase tracking-widest text-slate-400">Workspace</div><nav className="mt-3 flex flex-col gap-1">{(faculty?[{label:'Faculty overview',icon:Users,href:'/faculty'},{label:'Class analytics',icon:BarChart3,href:'/faculty'},{label:'Simulations',icon:Compass,href:'/visualize/bfs'}]:nav).map(n=><a key={n.label} href={n.href} className={cn('flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition hover:bg-indigo-50 hover:text-indigo-700',path===n.href?'bg-indigo-50 text-indigo-700':'text-slate-500')}><n.icon className="size-4"/>{n.label}</a>)}</nav><div className="mt-10 rounded-2xl bg-indigo-50 p-4"><Sparkles className="size-5 text-indigo-600"/><div className="mt-3 text-sm font-semibold">Keep your streak</div><div className="mt-1 text-xs leading-5 text-slate-500">You are 2 sessions away from a 7-day streak.</div><div className="mt-3 h-1.5 rounded-full bg-white"><div className="h-full w-4/5 rounded-full bg-indigo-600"/></div></div><div className="absolute bottom-6 left-5 right-5 flex items-center gap-3 border-t pt-5"><div className="flex size-9 items-center justify-center rounded-full bg-amber-100 text-sm font-bold text-amber-700">{initials(user?.name)}</div><div className="min-w-0"><div className="truncate text-sm font-semibold">{user?.name||'Learner'}</div><div className="text-xs text-slate-400">{user?.role==='faculty'?'Faculty':`${user?.year||''} ${user?.rollNo||''}`.trim()||'Student'}</div></div><button aria-label="Sign out" onClick={()=>api.logout()} className="ml-auto text-slate-400 hover:text-slate-700"><LogOut className="size-4"/></button></div></aside><header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white/90 px-5 backdrop-blur lg:ml-64 lg:px-10 dark:border-slate-800 dark:bg-slate-900/90"><button className="lg:hidden" onClick={()=>setOpen(!open)}><Menu/></button><div className="lg:hidden"><Logo/></div><div className="hidden items-center gap-2 text-sm text-slate-500 lg:flex"><span>Workspace</span><span>/</span><span className="font-medium text-slate-900">{faculty?'Faculty overview':'Learning hub'}</span></div><div className="flex items-center gap-3"><button onClick={()=>setDark(!dark)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Toggle theme">{dark?<Sun className="size-4"/>:<Moon className="size-4"/>}</button><div className="hidden h-6 w-px bg-slate-200 sm:block"/><div className="flex size-8 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700">{initials(user?.name)}</div></div></header>{open&&<div className="fixed inset-0 z-20 bg-slate-950/20 lg:hidden" onClick={()=>setOpen(false)}><div className="w-72 bg-white p-5" onClick={e=>e.stopPropagation()}><Logo/><nav className="mt-10 flex flex-col gap-2">{nav.map(n=><a href={n.href} key={n.label} className="rounded-xl p-3 text-sm font-medium hover:bg-indigo-50">{n.label}</a>)}</nav></div></div>}<main className="lg:ml-64">{children}</main></div> }
-function Ring({value=74}:{value?:number}){return <div className="relative size-36"><svg className="size-full -rotate-90" viewBox="0 0 120 120"><circle cx="60" cy="60" r="50" fill="none" stroke="currentColor" strokeWidth="10" className="text-slate-100"/><circle cx="60" cy="60" r="50" fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round" strokeDasharray={`${value*3.14} 314`} className="text-indigo-600"/></svg><div className="absolute inset-0 flex flex-col items-center justify-center"><span className="text-3xl font-bold">{value}%</span><span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Mastery</span></div></div>}
-function Chart({faculty=false}:{faculty?:boolean}){return <div className="relative h-48 w-full overflow-hidden"><svg viewBox="0 0 600 200" preserveAspectRatio="none" className="size-full"><defs><linearGradient id="fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#6366f1" stopOpacity=".24"/><stop offset="1" stopColor="#6366f1" stopOpacity="0"/></linearGradient></defs>{[40,80,120,160].map(y=><line key={y} x1="0" x2="600" y1={y} y2={y} stroke="#e2e8f0" strokeDasharray="4 5"/>)}{faculty?<><rect x="70" y="55" width="55" height="105" rx="8" fill="#6366f1"/><rect x="170" y="72" width="55" height="88" rx="8" fill="#818cf8"/><rect x="270" y="86" width="55" height="74" rx="8" fill="#a5b4fc"/><rect x="370" y="102" width="55" height="58" rx="8" fill="#c7d2fe"/><rect x="470" y="118" width="55" height="42" rx="8" fill="#e0e7ff"/></>:<><path d="M0 160 C70 145 95 150 145 120 S215 130 260 104 S315 110 360 85 S420 90 465 48 S530 65 600 25 V200 H0Z" fill="url(#fill)"/><path d="M0 160 C70 145 95 150 145 120 S215 130 260 104 S315 110 360 85 S420 90 465 48 S530 65 600 25" fill="none" stroke="#6366f1" strokeWidth="4" strokeLinecap="round"/></>}</svg><div className="absolute bottom-0 flex w-full justify-between text-[10px] text-slate-400"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div></div>}
-function Stat({icon:Icon,label,value,trend}:{icon:any,label:string,value:string,trend:string}){return <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><div className="flex size-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"><Icon className="size-4"/></div><span className="text-xs font-semibold text-emerald-600">{trend}</span></div><div className="mt-5 text-2xl font-bold">{value}</div><div className="mt-1 text-xs text-slate-500">{label}</div></div>}
+export default function Page() {
+  const [path, setPath] = useState('')
+  useEffect(() => {
+    const fn = () => setPath(window.location.pathname)
+    fn()
+    window.addEventListener('popstate', fn)
+    return () => window.removeEventListener('popstate', fn)
+  }, [])
 
-function Dashboard(){
-  const [progress,setProgress]=useState<StudentProgress|null>(null)
-  const [syllabus,setSyllabus]=useState<ApiSyllabusDoc[]>([])
-  const user=api.getStoredUser()
-  useEffect(()=>{api.getMyProgress().then(setProgress).catch(()=>{});api.getSyllabus().then(setSyllabus).catch(()=>{})},[])
-  const stats=progress?.stats
-  const continueTopic=useMemo(()=>{
-    if(!progress?.continueTopicId) return null
-    for(const doc of syllabus){const t=doc.topics.find(t=>t.id===progress.continueTopicId);if(t)return{...t,subject:doc.subject}}
-    return null
-  },[progress,syllabus])
-  const today=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})
-  const activityIcon=(t:string)=>t==='simulation'?<Play className="size-4"/>:t==='quiz'?<Check className="size-4"/>:<Code2 className="size-4"/>
-  return <AppShell><div className="mx-auto max-w-7xl px-5 py-8 lg:px-10"><div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><div className="flex items-center gap-2 text-sm text-slate-500"><span>{today}</span><span className="size-1 rounded-full bg-slate-300"/><span className="flex items-center gap-1 text-amber-600"><Flame className="size-3.5 fill-current"/> 5 day streak</span></div><h1 className="mt-2 text-3xl font-bold tracking-tight">Good morning, {user?.name?.split(' ')[0]||'learner'}</h1><p className="mt-1 text-sm text-slate-500">Ready to turn concepts into confidence?</p></div><a href="/syllabus" className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700">Continue learning <ArrowRight className="size-4"/></a></div><div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Stat icon={Play} label="Simulations completed" value={String(stats?.simulationsCompleted??'—')} trend="+ this week"/><Stat icon={Trophy} label="Average quiz score" value={stats?`${stats.avgQuizScore}%`:'—'} trend="all topics"/><Stat icon={Zap} label="Grasping power" value={stats?`${stats.graspingPower} / 100`:'—'} trend="adaptive"/><Stat icon={Code2} label="Coding problems solved" value={String(stats?.problemsSolved??'—')} trend="via Judge0"/></div><div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_1.45fr]"><section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center justify-between"><div><h2 className="font-semibold">Overall syllabus mastery</h2><p className="mt-1 text-xs text-slate-500">Across {progress?.subjectStats.length||3} subjects</p></div><button className="text-slate-400"><Settings className="size-4"/></button></div><div className="mt-7 flex items-center gap-7"><Ring value={progress?.overallMastery??0}/><div className="flex-1 space-y-5">{(progress?.subjectStats||[]).map((s,i)=>{const color=COLORS[i%3];return <div key={s.subject}><div className="flex justify-between text-xs"><span className="font-medium">{s.subject}</span><span className="font-semibold">{s.percent}%</span></div><div className="mt-2 h-2 rounded-full bg-slate-100"><div className={cn('h-full rounded-full',color==='indigo'?'bg-indigo-500':color==='emerald'?'bg-emerald-500':'bg-amber-400')} style={{width:`${s.percent}%`}}/></div></div>})}</div></div></section><section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-start justify-between"><div><h2 className="font-semibold">Grasping power trend</h2><p className="mt-1 text-xs text-slate-500">Your learning momentum across quizzes</p></div><span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{stats?`${stats.graspingPower} pts`:'—'}</span></div><div className="mt-5"><Chart/></div></section></div><div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]"><section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center justify-between"><div><h2 className="font-semibold">Recent activity</h2><p className="mt-1 text-xs text-slate-500">Keep up your learning rhythm</p></div><a href="/syllabus" className="text-xs font-semibold text-indigo-600">View all</a></div><div className="mt-5 flex flex-col gap-1">{(progress?.recentActivity||[]).map((a,i)=><div key={i} className="flex items-center gap-4 rounded-xl p-3 hover:bg-slate-50"><div className={cn('flex size-9 items-center justify-center rounded-full',a.type==='simulation'?'bg-indigo-50 text-indigo-600':a.type==='quiz'?'bg-emerald-50 text-emerald-600':'bg-amber-50 text-amber-600')} >{activityIcon(a.type)}</div><div className="flex-1"><div className="text-sm font-medium">{a.title}</div><div className="mt-0.5 text-xs text-slate-400">{new Date(a.date).toLocaleString()}</div></div><ArrowRight className="size-4 text-slate-300"/></div>)}{!progress?.recentActivity.length&&<div className="p-3 text-sm text-slate-400">No activity yet — start with a simulation.</div>}</div></section><section className="rounded-2xl bg-slate-900 p-6 text-white shadow-sm"><div className="flex size-10 items-center justify-center rounded-xl bg-white/10"><Lightbulb className="size-5 text-amber-300"/></div><h2 className="mt-5 text-lg font-semibold">Continue where you left off</h2><p className="mt-2 text-sm leading-6 text-slate-300">You were exploring <strong className="text-white">{continueTopic?continueTopic.name:'your next topic'}</strong>. Pick up right where you stopped.</p><a href={continueTopic?.algorithmId?`/visualize/${continueTopic.algorithmId}`:'/syllabus'} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900">Resume simulation <Play className="size-4 fill-current"/></a></section></div></div></AppShell>}
-
-function Syllabus(){
-  const [docs,setDocs]=useState<ApiSyllabusDoc[]>([])
-  const [year,setYear]=useState('all'); const [sem,setSem]=useState('all'); const [subject,setSubject]=useState('all')
-  useEffect(()=>{api.getSyllabus().then(setDocs).catch(()=>{})},[])
-  const years=[...new Set(docs.map(d=>d.year))]
-  const sems=[...new Set(docs.map(d=>d.semester))].sort()
-  const subjects=[...new Set(docs.map(d=>d.subject))]
-  const topics:((ApiTopic&{subject:string;color:string;completion:number})[])=[]
-  for(const doc of docs){
-    if(year!=='all'&&doc.year!==year)continue
-    if(sem!=='all'&&String(doc.semester)!==sem)continue
-    if(subject!=='all'&&doc.subject!==subject)continue
-    const color=COLORS[(subjects.indexOf(doc.subject)+doc.semester)%3]
-    for(const t of doc.topics){
-      const done=(t.simulationCompleted?1:0)+(t.quizAttempts&&t.quizAttempts>0?1:0)+(t.codeSubmissions&&t.codeSubmissions>0?1:0)
-      topics.push({...t,subject:doc.subject,color,completion:Math.round(done/3*100)})
+  /* route guards: session + role */
+  useEffect(() => {
+    if (!path) return
+    const user = api.getStoredUser()
+    if (!user) {
+      if (path !== '/login' && path !== '/') window.location.href = '/login'
+      return
     }
+    if (path === '/login' || path === '/') {
+      window.location.href = user.role === 'faculty' ? '/faculty' : '/dashboard'
+      return
+    }
+    if (path.startsWith('/faculty') && user.role !== 'faculty') {
+      api.toast('Faculty access only', 'error')
+      window.location.href = '/dashboard'
+    }
+  }, [path])
+
+  const render = () => {
+    if (!path) return <Boot key="boot" />
+    if (path === '/') return <Landing key="landing" />
+    if (path === '/login') return <Login key="login" />
+    if (path === '/dashboard') return <Dashboard key="dash" />
+    if (path === '/syllabus') return <Syllabus key="syl" />
+    if (path.startsWith('/topic/')) return <TopicDetail key={path} topicId={path.split('/')[2]} />
+    if (path.startsWith('/visualize/')) return <Visualizer key={path} algorithmId={path.split('/')[2] || 'bfs'} />
+    if (path.startsWith('/quiz/')) return <Quiz key={path} topicId={path.split('/')[2]} />
+    if (path.startsWith('/code/')) return <CodeWorkspace key={path} topicId={(path.split('/')[2] || '').replace(/-code$/, '')} />
+    if (path.startsWith('/faculty')) return <Faculty key="fac" />
+    return <Dashboard key="dash" />
   }
-  const labelYear=(y:string)=>y==='SY'?'Second Year (SY)':'Third Year (TY)'
-  return <AppShell><div className="mx-auto max-w-7xl px-5 py-8 lg:px-10"><div><div className="text-sm text-slate-500">Learning hub / Syllabus</div><h1 className="mt-2 text-3xl font-bold tracking-tight">Syllabus navigator</h1><p className="mt-1 text-sm text-slate-500">Choose a topic and learn it your way.</p></div><div className="mt-8 grid gap-3 sm:grid-cols-3"><select className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm" value={year} onChange={e=>setYear(e.target.value)}><option value="all">All years</option>{years.map(y=><option key={y} value={y}>{labelYear(y)}</option>)}</select><select className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm" value={sem} onChange={e=>setSem(e.target.value)}><option value="all">All semesters</option>{sems.map(s=><option key={s} value={String(s)}>Semester {s}</option>)}</select><select className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm" value={subject} onChange={e=>setSubject(e.target.value)}><option value="all">All subjects</option>{subjects.map(s=><option key={s}>{s}</option>)}</select></div><div className="mt-10 flex items-center justify-between"><h2 className="text-lg font-semibold">Your topics <span className="ml-2 text-sm font-normal text-slate-400">{topics.length} topics</span></h2><div className="flex gap-2 text-xs"><span className="flex items-center gap-1"><span className="size-2 rounded-full bg-indigo-500"/> In progress</span><span className="flex items-center gap-1"><span className="size-2 rounded-full bg-emerald-500"/> Complete</span></div></div><div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{topics.map(t=><div key={t.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"><div className="flex items-start justify-between"><div className={cn('flex size-10 items-center justify-center rounded-xl',t.color==='indigo'?'bg-indigo-50 text-indigo-600':t.color==='emerald'?'bg-emerald-50 text-emerald-600':'bg-amber-50 text-amber-600')}><BookOpen className="size-5"/></div><span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-500">{t.subject}</span></div><h3 className="mt-5 font-semibold">{t.name}</h3><div className="mt-4 flex items-center justify-between text-xs"><span className="text-slate-500">{t.completion}% mastered</span><span className="h-1.5 w-24 rounded-full bg-slate-100"><span className={cn('block h-full rounded-full',t.color==='indigo'?'bg-indigo-500':t.color==='emerald'?'bg-emerald-500':'bg-amber-400')} style={{width:`${t.completion}%`}}/></span></div><div className="mt-5 grid grid-cols-3 gap-2"><a href={`/visualize/${t.algorithmId||t.id}`} className="rounded-lg border border-slate-200 py-2 text-center text-[11px] font-semibold text-slate-600 hover:border-indigo-300 hover:text-indigo-600"><Play className="mx-auto mb-1 size-3.5"/>Visualize</a><a href={`/quiz/${t.id}`} className="rounded-lg border border-slate-200 py-2 text-center text-[11px] font-semibold text-slate-600 hover:border-indigo-300 hover:text-indigo-600"><CircleHelp className="mx-auto mb-1 size-3.5"/>Quiz</a><a href={`/code/${t.id}-code`} className="rounded-lg border border-slate-200 py-2 text-center text-[11px] font-semibold text-slate-600 hover:border-indigo-300 hover:text-indigo-600"><Code2 className="mx-auto mb-1 size-3.5"/>Code</a></div></div>)}</div></div></AppShell>}
 
-// Maps the server's generic step shape onto the fixed demo graph coordinates.
-const NODE_XY: [number, number][] = [[70,140],[180,70],[180,220],[300,55],[300,155],[300,245],[430,100],[430,230]]
-const EDGES: [number,number,number,number][] = [[70,140,180,70],[70,140,180,220],[180,70,300,55],[180,70,300,155],[180,220,300,245],[300,55,430,100],[300,155,430,100],[300,155,430,230],[300,245,430,230]]
-const NODE_LINKS: [number,number][] = [[0,1],[0,2],[1,3],[2,3],[2,4],[3,6],[4,6],[4,5],[4,7]]
-
-function Visualizer(){
-  const [algorithmId,setAlgorithmId]=useState<string>(()=>typeof window!=='undefined'&&window.location.pathname.split('/')[2]?window.location.pathname.split('/')[2]:'bfs')
-  const [sim,setSim]=useState<api.Simulation|null>(null)
-  const [step,setStep]=useState(0)
-  const [playing,setPlaying]=useState(false)
-  const [speed,setSpeed]=useState(1)
-  const [completed,setCompleted]=useState(false)
-  const timer=useRef<ReturnType<typeof setInterval>|null>(null)
-
-  useEffect(()=>{setSim(null);setStep(0);setCompleted(false);api.getSimulation(algorithmId).then(s=>{setSim(s)}).catch(()=>setSim(null))},[algorithmId])
-  const last=useMemo(()=>(sim?.steps.length||1)-1,[sim])
-  useEffect(()=>{
-    if(timer.current)clearInterval(timer.current)
-    if(playing){timer.current=setInterval(()=>{setStep(s=>{if(s>=last){setPlaying(false);return s}return s+1})},1200/speed)}
-    return()=>{if(timer.current)clearInterval(timer.current)}
-  },[playing,speed,last])
-
-  const finish=useCallback(async()=>{setPlaying(false);setStep(last);try{await api.completeSimulation(algorithmId);setCompleted(true);api.toast('Simulation marked complete','success')}catch{}},[algorithmId,last])
-
-  const cur=sim?.steps[Math.min(step,last)]
-  const visited=cur?.visited||[]
-  const active=cur?.activeNode
-  // project arbitrary algorithm node ids onto the 8 demo node positions
-  const nodeState=(i:number)=>{if(active===i)return 'active';if(visited.includes(i))return 'done';return 'idle'}
-  const varsList=cur?Object.entries(cur.vars).slice(0,3):[]
-  const nodesToShow=sim?Math.min(8,Math.max(5,visited.length||5)):5
-  return <AppShell><div className="mx-auto max-w-7xl px-5 py-8 lg:px-10"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="text-sm text-slate-500">Syllabus / Visualizer</div><h1 className="mt-2 text-3xl font-bold">{sim?.name||SIM_NAMES[algorithmId]||algorithmId}</h1><p className="mt-1 text-sm text-slate-500">Explore the algorithm step by step on an interactive graph.</p></div><select className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm" value={algorithmId} onChange={e=>setAlgorithmId(e.target.value)}>{ALGORITHMS.map(a=><option key={a} value={a}>{SIM_NAMES[a]}</option>)}</select></div><div className="mt-8 grid gap-6 xl:grid-cols-[1.6fr_1fr]"><section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><span className="text-sm font-semibold">Graph traversal</span><span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">Step {sim?step+1:0} of {sim?last+1:0}</span></div><div className="relative flex min-h-[390px] items-center justify-center bg-[#fbfcff]"><svg viewBox="0 0 560 300" className="w-full max-w-2xl"><g stroke="#cbd5e1" strokeWidth="3">{EDGES.map((e,i)=><line key={i} x1={e[0]} y1={e[1]} x2={e[2]} y2={e[3]} opacity={cur?.treeEdges?.some(([a,b])=>NODE_LINKS[i]&&((NODE_LINKS[i][0]===a&&NODE_LINKS[i][1]===b)||(NODE_LINKS[i][0]===b&&NODE_LINKS[i][1]===a)))?1:0.25}/>)}</g>{NODE_XY.slice(0,nodesToShow).map(([x,y],i)=><g key={i}><circle cx={x} cy={y} r="24" fill={nodeState(i)==='active'?'#6366f1':nodeState(i)==='done'?'#10b981':'#e2e8f0'} stroke={nodeState(i)==='active'?'#4338ca':'white'} strokeWidth="4"/><text x={x} y={y+5} textAnchor="middle" fill={nodeState(i)!=='idle'?'white':'#64748b'} fontSize="14" fontWeight="700">{i}</text></g>)}</svg></div><div className="border-t border-slate-100 px-5 py-4"><div className="flex items-center justify-center gap-2"><button onClick={()=>{setPlaying(false);setStep(Math.max(0,step-1))}} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><ArrowLeft/></button><button onClick={()=>{if(step>=last){finish()}else{setPlaying(!playing)}}} className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white"><Play className="size-4 fill-current"/> {step>=last?'Completed':playing?'Pause':'Play step'}</button><button onClick={()=>{setPlaying(false);setStep(0);setCompleted(false)}} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><RotateCcw/></button></div><div className="mx-auto mt-4 flex max-w-sm items-center gap-3 text-xs text-slate-400"><span>Slow</span><input type="range" min={0.5} max={3} step={0.5} value={speed} onChange={e=>setSpeed(Number(e.target.value))} className="flex-1 accent-indigo-600"/><span>Fast</span></div></div></section><section className="rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="flex border-b border-slate-100"><button className="border-b-2 border-indigo-600 px-5 py-4 text-sm font-semibold text-indigo-600">Explanation</button><button className="px-5 py-4 text-sm text-slate-500">Pseudocode</button><button className="px-5 py-4 text-sm text-slate-500">State</button></div><div className="p-6"><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-indigo-600"><span className="size-2 rounded-full bg-indigo-500"/> Current step</div><h2 className="mt-4 text-xl font-semibold">{cur?cur.description:'Loading…'}</h2><div className="mt-6 rounded-xl bg-slate-50 p-4"><div className="text-xs font-semibold text-slate-500">Pseudocode</div><pre className="mt-2 text-xs leading-6 text-slate-600">{(sim?.pseudocode||[]).map((line,i)=><div key={i} className={cn('rounded px-2',cur?.pseudocodeLine===i&&'bg-indigo-100 font-semibold text-indigo-800')}>{line}</div>)}</pre></div><div className="mt-4 rounded-xl bg-slate-50 p-4"><div className="text-xs font-semibold text-slate-500">Live state</div><div className="mt-2 space-y-1 text-xs text-slate-600">{varsList.map(([k,v])=><div key={k}><span className="font-semibold">{k}</span>: <span className="font-mono">{JSON.stringify(v)}</span></div>)}</div></div>{(step>=last||completed)&&<button onClick={finish} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white">Simulation complete — take quiz <ArrowRight className="size-4" onClick={e=>{e.stopPropagation();window.location.href=`/quiz/${algorithmId}`}}/></button>}{(step>=last||completed)&&<a href={`/quiz/${algorithmId}`} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-600 px-4 py-3 text-sm font-semibold text-emerald-700">Go to quiz</a>}</div></section></div></div></AppShell>}
-
-function Quiz(){
-  const [topicId,setTopicId]=useState<string>(()=>typeof window!=='undefined'&&window.location.pathname.split('/')[2]?window.location.pathname.split('/')[2]:'bfs')
-  const [question,setQuestion]=useState<api.ApiQuestion|null>(null)
-  const [difficulty,setDifficulty]=useState<string|undefined>(undefined)
-  const [selected,setSelected]=useState<number|null>(null)
-  const [result,setResult]=useState<api.QuizAnswerResult|null>(null)
-  const [grasp,setGrasp]=useState(50)
-  const [index,setIndex]=useState(0)
-  const [elapsed,setElapsed]=useState(0)
-  const [finished,setFinished]=useState<QuizResult|null>(null)
-  const startRef=useRef(Date.now())
-
-  const loadQuestion=useCallback(async(d?:string)=>{setSelected(null);setResult(null);startRef.current=Date.now();setElapsed(0);try{const r=await api.getNextQuestion(topicId,d);setQuestion(r.question);setDifficulty(r.difficulty)}catch{}},[topicId])
-  useEffect(()=>{loadQuestion()},[loadQuestion])
-  useEffect(()=>{const t=setInterval(()=>setElapsed(Math.floor((Date.now()-startRef.current)/1000)),1000);return()=>clearInterval(t)},[question])
-
-  const answer=async(i:number)=>{
-    if(selected!==null||!question)return
-    setSelected(i)
-    try{
-      const r=await api.submitAnswer({topicId,questionId:question._id,selectedIndex:i,timeTakenMs:Date.now()-startRef.current})
-      setResult(r);setGrasp(r.graspingPower)
-    }catch{}
-  }
-  const next=async()=>{
-    if(index+1>=5){try{const r=await api.finishQuiz(topicId);setFinished(r)}catch{};return}
-    setIndex(index+1);loadQuestion(result?.nextDifficulty||difficulty)
-  }
-  const mm=String(Math.floor(elapsed/60)).padStart(2,'0');const ss=String(elapsed%60).padStart(2,'0')
-
-  if(finished)return <AppShell><div className="mx-auto max-w-4xl px-5 py-8 lg:px-10"><div className="text-sm text-slate-500">Adaptive quiz / {topicId}</div><h1 className="mt-2 text-3xl font-bold">Quiz results</h1><section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10"><div className="grid gap-6 sm:grid-cols-3"><div className="rounded-xl bg-indigo-50 p-5"><div className="text-xs font-semibold uppercase tracking-wider text-indigo-600">Score</div><div className="mt-2 text-3xl font-bold">{finished.score}%</div></div><div className="rounded-xl bg-emerald-50 p-5"><div className="text-xs font-semibold uppercase tracking-wider text-emerald-600">Grasping power</div><div className="mt-2 text-3xl font-bold">{finished.graspingPower}/100</div></div><div className="rounded-xl bg-amber-50 p-5"><div className="text-xs font-semibold uppercase tracking-wider text-amber-600">Correct</div><div className="mt-2 text-3xl font-bold">{finished.correctCount}/{finished.answered}</div></div></div>{finished.weakConcepts.length>0&&<div className="mt-6 rounded-xl bg-rose-50 p-5 text-rose-800"><div className="text-sm font-semibold">Weak concepts flagged</div><div className="mt-2 flex flex-wrap gap-2">{finished.weakConcepts.map(c=><span key={c} className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold">{c}</span>)}</div></div>}<div className="mt-6 rounded-xl bg-slate-50 p-5 text-sm text-slate-700"><span className="font-semibold">Recommendation: </span>{finished.recommendation}</div><div className="mt-8 flex gap-3"><button onClick={()=>{setFinished(null);setIndex(0);setGrasp(50);loadQuestion()}} className="flex items-center gap-2 rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold">Retry quiz</button><a href="/dashboard" className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white">Back to dashboard <ArrowRight className="size-4"/></a></div></section></div></AppShell>
-
-  return <AppShell><div className="mx-auto max-w-4xl px-5 py-8 lg:px-10"><div className="flex items-center justify-between"><div><div className="text-sm text-slate-500">Adaptive quiz / {topicId}</div><h1 className="mt-2 text-3xl font-bold">Adaptive checkpoint</h1></div><div className="text-right"><div className="text-xs text-slate-400">Grasping power</div><div className="text-2xl font-bold text-indigo-600">{grasp}<span className="text-sm text-slate-400"> / 100</span></div></div></div><div className="mt-8 h-2 rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-600 transition-all" style={{width:`${((index)/5)*100}%`}}/></div><div className="mt-3 flex justify-between text-xs text-slate-400"><span>Question {index+1} of 5</span><span className="flex items-center gap-1"><Activity className="size-3.5"/> Adapting to you</span></div><section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10"><div className="flex justify-between"><span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold capitalize text-emerald-700">{question?.difficulty||difficulty||'…'}</span><span className="flex items-center gap-1 text-xs text-slate-400"><span className="size-2 rounded-full bg-amber-400"/> {mm}:{ss}</span></div><h2 className="mt-8 text-2xl font-semibold leading-9">{question?.text||'Loading question…'}</h2><div className="mt-8 grid gap-3">{(question?.options||[]).map((option,i)=><button key={i} onClick={()=>answer(i)} className={cn('flex items-center gap-4 rounded-xl border p-4 text-left text-sm transition',selected===null?'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/40':result&&i===result.correctIndex?'border-emerald-300 bg-emerald-50':selected===i?'border-rose-300 bg-rose-50':'border-slate-200')}><span className="flex size-7 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-slate-500">{String.fromCharCode(65+i)}</span>{option}{result&&i===result.correctIndex&&<Check className="ml-auto size-4 text-emerald-600"/>}</button>)}</div>{result&&<div className={cn('mt-6 rounded-xl p-4 text-sm',result.correct?'bg-emerald-50 text-emerald-800':'bg-rose-50 text-rose-800')}><div className="font-semibold">{result.correct?`Correct — great work! (+${result.gain} grasp)`:'Not quite this time.'}</div><div className="mt-1 opacity-80">{result.explanation}</div><div className="mt-2 text-xs font-semibold">Next question: {result.nextDifficulty} · grasp {result.graspDelta>=0?'+':''}{result.graspDelta}</div></div>}<div className="mt-8 flex justify-end">{index<4?<button disabled={selected===null||!result} onClick={next} className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">Next question <ArrowRight className="size-4"/></button>:<button disabled={selected===null||!result} onClick={next} className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">See results <ArrowRight className="size-4"/></button>}</div></section></div></AppShell>}
-
-function CodeWorkspace(){
-  const [topicId,setTopicId]=useState<string>(()=>{const raw=typeof window!=='undefined'?window.location.pathname.split('/')[2]||'':'bfs';return raw.replace(/-code$/,'')})
-  const [problem,setProblem]=useState<api.ApiProblem|null>(null)
-  const [language,setLanguage]=useState<CodeLanguage>('python')
-  const [source,setSource]=useState('')
-  const [running,setRunning]=useState(false)
-  const [output,setOutput]=useState('Run your solution to see output.')
-  const [saved,setSaved]=useState('Auto-saves locally')
-  const [tab,setTab]=useState<'output'|'tests'|'errors'>('output')
-  const [runResult,setRunResult]=useState<api.CodeRunResult|null>(null)
-
-  useEffect(()=>{api.getProblems(topicId).then(ps=>{if(ps.length){setProblem(ps[0])}else{api.toast('No coding problem found for this topic','error')}}).catch(()=>{})},[topicId])
-  useEffect(()=>{if(problem){const key=`algolearn:code:${problem._id}:${language}`;const savedCode=localStorage.getItem(key)||problem.starterCode?.[language]||'';setSource(savedCode)}},[problem,language])
-  useEffect(()=>{if(!problem)return;const t=setTimeout(()=>{localStorage.setItem(`algolearn:code:${problem._id}:${language}`,source);setSaved('Auto-saved just now')},800);return()=>clearTimeout(t)},[source,problem,language])
-
-  const run=async()=>{
-    if(!problem)return
-    setRunning(true);setOutput('Running against hidden test cases…');setTab('output')
-    try{
-      const r=await api.runCode(problem._id,language,source)
-      setRunResult(r)
-      setOutput(r.results.map((t,i)=>`Test ${i+1}: ${t.passed?'PASS':'FAIL'} (${t.statusDescription})${t.stdout?`\n  stdout: ${t.stdout.trim()}`:''}`).join('\n')+`\n\n${r.summary.passed}/${r.summary.total} tests passed in ${(r.totalMs/1000).toFixed(1)}s`)
-      if(r.summary.allPassed)api.toast('All tests passed — problem solved!','success')
-    }catch(e:any){setOutput(e?.message||'Run failed')}
-    setRunning(false)
-  }
-  return <AppShell><div className="mx-auto max-w-[1500px] px-5 py-8 lg:px-10"><div className="flex items-center justify-between"><div><div className="text-sm text-slate-500">Code workspace / {topicId}</div><h1 className="mt-2 text-3xl font-bold">{problem?.title||'Loading problem…'}</h1></div><div className="flex gap-2"><button onClick={run} disabled={running||!problem} className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{running?<Activity className="size-4 animate-spin"/>:<Play className="size-4"/>} Run</button><button onClick={()=>{setTab('tests')}} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold">Submit</button></div></div><div className="mt-8 grid gap-5 lg:grid-cols-[.9fr_1.4fr]"><section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold capitalize text-indigo-700">{problem?.difficulty||topicId}</span><h2 className="mt-5 text-xl font-semibold">Problem statement</h2><p className="mt-3 text-sm leading-7 text-slate-500">{problem?.statement||''}</p>{(problem?.examples||[]).map((ex,i)=><div key={i}><h3 className="mt-8 text-sm font-semibold">Example {i+1} input</h3><pre className="mt-2 rounded-xl bg-slate-900 p-4 text-xs leading-6 text-slate-300">{ex.input}</pre><h3 className="mt-5 text-sm font-semibold">Expected output</h3><pre className="mt-2 rounded-xl bg-slate-50 p-4 text-xs text-slate-600">{ex.output}</pre></div>)}</section><section className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-sm"><div className="flex items-center justify-between border-b border-slate-800 px-5 py-3"><select value={language} onChange={e=>setLanguage(e.target.value as CodeLanguage)} className="bg-transparent text-sm font-medium text-slate-300"><option value="python">Python 3</option><option value="cpp">C++</option><option value="c">C</option><option value="java">Java</option></select><span className="text-xs text-slate-500">{saved}</span></div><textarea value={source} onChange={e=>setSource(e.target.value)} className="min-h-[360px] w-full resize-none bg-slate-950 p-6 font-mono text-sm leading-7 text-slate-200 outline-none" spellCheck={false}/><div className="border-t border-slate-800"><div className="flex gap-5 px-5 pt-3 text-xs font-semibold text-slate-400"><button onClick={()=>setTab('output')} className={cn('pb-3',tab==='output'&&'border-b-2 border-indigo-400 text-white')}>Output</button><button onClick={()=>setTab('tests')} className={cn('pb-3',tab==='tests'&&'border-b-2 border-indigo-400 text-white')}>Test cases</button><button onClick={()=>setTab('errors')} className={cn('pb-3',tab==='errors'&&'border-b-2 border-indigo-400 text-white')}>Errors</button></div><div className="min-h-28 px-5 py-4 font-mono text-xs text-slate-400 whitespace-pre-wrap">{tab==='output'&&output}{tab==='tests'&&(runResult?runResult.results.map((t,i)=><div key={i} className={t.passed?'text-emerald-400':'text-rose-400'}>Test {i+1}: {t.passed?'PASS':'FAIL'} · {t.time||'—'} · {t.memory||'—'}</div>):'Run to see per-test results.')}{tab==='errors'&&(runResult?(()=>{const errs=runResult.results.filter(t=>t.compileOutput||t.stderr);return errs.length?errs.map((t,i)=><div key={i} className="text-rose-400 whitespace-pre-wrap">{t.compileOutput||t.stderr}</div>):'No errors — clean run.'})():'Runtime/compile errors appear here.')}</div></div></section></div></div></AppShell>}
-
-function Faculty(){
-  const [data,setData]=useState<FacultyOverview|null>(null)
-  useEffect(()=>{api.getClassOverview().then(setData).catch(()=>{})},[])
-  const rel=(d:string|null)=>{if(!d)return 'never';const diff=Date.now()-new Date(d).getTime();const h=Math.floor(diff/3600000);if(h<1)return 'just now';if(h<24)return `${h}h ago`;return `${Math.floor(h/24)}d ago`}
-  return <AppShell faculty><div className="mx-auto max-w-7xl px-5 py-8 lg:px-10"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="text-sm text-slate-500">Faculty workspace</div><h1 className="mt-2 text-3xl font-bold">Class overview</h1><p className="mt-1 text-sm text-slate-500">Track progress and spot opportunities to help your class.</p></div><a href="/visualize/bfs" className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white"><Play className="size-4"/> Open simulation</a></div><div className="mt-8 grid gap-4 sm:grid-cols-3"><Stat icon={Trophy} label="Average quiz score" value={data?`${data.totals.avgQuizScore}%`:'—'} trend="class-wide"/><Stat icon={Activity} label="Completion rate" value={data?`${data.totals.completionRate}%`:'—'} trend="all topics"/><Stat icon={Users} label="Active students" value={data?String(data.totals.students):'—'} trend="enrolled"/></div><div className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_.85fr]"><section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="font-semibold">Average score by topic</h2><p className="mt-1 text-xs text-slate-500">Current semester performance</p><div className="mt-5"><Chart faculty/></div></section><section className="rounded-2xl border border-amber-200 bg-amber-50 p-6"><div className="flex items-center gap-2 text-amber-700"><Zap className="size-5"/><h2 className="font-semibold">Weak topics</h2></div><p className="mt-2 text-sm leading-6 text-amber-900/70">These concepts need a little more classroom attention.</p><div className="mt-5 flex flex-wrap gap-2">{(data?.weakTopics||[]).map(t=><span key={t.topicId} className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-amber-800">{t.topicName} · {t.avgQuizScore}%</span>)}{data&&!data.weakTopics.length&&<span className="text-sm text-amber-800">No weak topics — the class is doing great.</span>}</div><button className="mt-7 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white">View recommendations</button></section></div><section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><h2 className="font-semibold">Student progress</h2><p className="mt-1 text-xs text-slate-500">{data?.totals.students??'…'} students</p></div><div className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-400"><Search className="size-4"/> Search students</div></div><div className="mt-5 overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b border-slate-100 text-xs text-slate-400"><tr><th className="pb-3 font-medium">Student</th><th className="pb-3 font-medium">Roll no.</th><th className="pb-3 font-medium">Mastery</th><th className="pb-3 font-medium">Last active</th></tr></thead><tbody>{(data?.students||[]).slice(0,8).map(s=><tr key={s.id} className="border-b border-slate-50"><td className="py-3 font-medium">{s.name}</td><td className="py-3 text-slate-500">{s.rollNo}</td><td className="py-3"><div className="flex items-center gap-3"><span className="w-8 text-xs font-semibold">{s.mastery}%</span><span className="h-1.5 w-24 rounded-full bg-slate-100"><span className="block h-full rounded-full bg-indigo-500" style={{width:`${s.mastery}%`}}/></span></div></td><td className="py-3 text-slate-500">{rel(s.lastActive)}</td></tr>)}</tbody></table></div></section></div></AppShell>}
-
-function Login(){
-  const [mode,setMode]=useState<'login'|'register'>('login')
-  const [identifier,setIdentifier]=useState('')
-  const [password,setPassword]=useState('')
-  const [name,setName]=useState('')
-  const [email,setEmail]=useState('')
-  const [role,setRole]=useState<'student'|'faculty'>('student')
-  const [year,setYear]=useState<'SY'|'TY'>('SY')
-  const [busy,setBusy]=useState(false)
-  const submit=async(e:React.FormEvent)=>{e.preventDefault();setBusy(true)
-    try{
-      if(mode==='login'){const {user}=await api.login(identifier,password);api.toast(`Welcome back, ${user.name.split(' ')[0]}!`,'success');window.location.href=user.role==='faculty'?'/faculty':'/dashboard'}
-      else{const {user}=await api.register({name,email,password,role,year});api.toast('Account created — welcome!','success');window.location.href=user.role==='faculty'?'/faculty':'/dashboard'}
-    }catch(err:any){api.toast(err?.message||'Authentication failed','error')}
-    setBusy(false)}
-  return <div className="flex min-h-screen items-center justify-center bg-[#f7f8fc] px-5"><div className="grid w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl lg:grid-cols-2"><div className="hidden bg-indigo-600 p-12 text-white lg:block"><Logo/><div className="mt-28"><div className="flex size-12 items-center justify-center rounded-2xl bg-white/15"><GraduationCap className="size-6"/></div><h1 className="mt-6 text-4xl font-bold leading-tight">Learn algorithms.<br/>Build confidence.</h1><p className="mt-5 max-w-sm text-indigo-100">A smarter way to master computer engineering — one concept, simulation, and challenge at a time.</p></div><div className="mt-32 flex gap-8 text-xs text-indigo-100"><span>Visualize</span><span>Practice</span><span>Implement</span></div></div><div className="p-7 sm:p-12"><div className="lg:hidden"><Logo/></div><div className="mt-8 lg:mt-12"><div className="flex gap-6 border-b border-slate-200"><button onClick={()=>setMode('login')} className={cn('border-b-2 pb-3 text-sm font-semibold',mode==='login'?'border-indigo-600 text-indigo-600':'pb-3 text-sm text-slate-400')}>Log in</button><button onClick={()=>setMode('register')} className={cn('pb-3 text-sm',mode==='register'?'border-b-2 border-indigo-600 font-semibold text-indigo-600':'text-slate-400')}>Register</button></div><h2 className="mt-8 text-2xl font-bold">{mode==='login'?'Welcome back':'Create your account'}</h2><p className="mt-2 text-sm text-slate-500">{mode==='login'?'Continue your learning journey.':'Join as a student or faculty member.'}</p><form className="mt-7 flex flex-col gap-4" onSubmit={submit}>{mode==='register'&&<><label className="text-sm font-medium">Full name<input value={name} onChange={e=>setName(e.target.value)} required className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-500" placeholder="Aarav Shah"/></label><label className="text-sm font-medium">Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-500" placeholder="aarav@college.edu"/></label><div className="grid grid-cols-2 gap-4"><label className="text-sm font-medium">Role<select value={role} onChange={e=>setRole(e.target.value as 'student'|'faculty')} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-500"><option value="student">Student</option><option value="faculty">Faculty</option></select></label><label className="text-sm font-medium">Year<select value={year} onChange={e=>setYear(e.target.value as 'SY'|'TY')} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-500"><option value="SY">SY</option><option value="TY">TY</option></select></label></div></>}{mode==='login'&&<label className="text-sm font-medium">Email or roll number<input value={identifier} onChange={e=>setIdentifier(e.target.value)} required className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-500" placeholder="aarav@college.edu"/></label>}<label className="text-sm font-medium">Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} required minLength={6} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-500" placeholder="••••••••"/></label><div className="flex items-center justify-between text-xs"><label className="flex items-center gap-2 text-slate-500"><input type="checkbox"/> Remember me</label><a href="#" className="font-semibold text-indigo-600">Forgot password?</a></div><button disabled={busy} className="mt-3 rounded-xl bg-indigo-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 disabled:opacity-50">{busy?'Please wait…':mode==='login'?'Log in to AlgoLearn':'Create account'}</button></form><div className="mt-8 flex items-center gap-3 text-xs text-slate-400"><span className="h-px flex-1 bg-slate-200"/>Demo access: student<span className="h-px flex-1 bg-slate-200"/></div><div className="mt-2 rounded-xl bg-slate-50 p-3 text-center text-xs text-slate-500">student: <code>aarav@college.edu</code> · faculty: <code>faculty@college.edu</code> · password: <code>password123</code></div></div></div></div></div>}
-
-export default function Page(){const [path,setPath]=useState('');useEffect(()=>{setPath(window.location.pathname);const fn=()=>setPath(window.location.pathname);window.addEventListener('popstate',fn);return()=>window.removeEventListener('popstate',fn)},[]);
-  // Route guard: require a session everywhere except /login; /faculty is faculty-only.
-  useEffect(()=>{
-    if(!path)return
-    const user=api.getStoredUser()
-    if(!user&&path!=='/login'){window.location.href='/login';return}
-    if(user&&path==='/login'){window.location.href=user.role==='faculty'?'/faculty':'/dashboard';return}
-    if(user&&path.startsWith('/faculty')&&user.role!=='faculty'){api.toast('Faculty access only','error');window.location.href='/dashboard'}
-  },[path])
-  if(!path)return <Login/>; if(path==='/login')return <Login/>; if(path==='/dashboard'||path==='/')return <Dashboard/>; if(path==='/syllabus')return <Syllabus/>; if(path==='/faculty')return <Faculty/>; if(path.startsWith('/visualize'))return <Visualizer/>; if(path.startsWith('/quiz'))return <Quiz/>; if(path.startsWith('/code'))return <CodeWorkspace/>; return <Dashboard/>}
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={path || 'boot'}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -6 }}
+        transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+      >
+        {render()}
+      </motion.div>
+    </AnimatePresence>
+  )
+}

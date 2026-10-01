@@ -4,6 +4,6 @@ const { asyncHandler } = require('../../middleware/error')
 const { auth } = require('../../middleware/auth')
 
 syllabusRoutes.get('/', auth, asyncHandler(controller.getSyllabus))
-syllabusRoutes.get('/topics/:id', auth, asyncHandler(controller.getTopic))
+syllabusRoutes.get('/:id', auth, asyncHandler(controller.getTopic))
 
 module.exports = syllabusRoutes

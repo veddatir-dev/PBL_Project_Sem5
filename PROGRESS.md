@@ -1,6 +1,6 @@
 # Build Progress
 
-Tracker for wiring the v0 frontend to the new backend (PRD: Adaptive Learning & Simulation System). **Status: complete — all flows verified end-to-end.**
+Tracker for wiring the v0 frontend to the new backend (PRD: Adaptive Learning & Simulation System). **Status: complete — all flows verified end-to-end.** UI fully redesigned (dark computational design system) — see "UI redesign" below.
 
 ## Legend
 - [x] done · [~] in progress · [ ] pending
@@ -49,6 +49,25 @@ Tracker for wiring the v0 frontend to the new backend (PRD: Adaptive Learning & 
 | README setup guide | [x] |
 | TypeScript check + production build | [x] — both clean |
 | End-to-end browser smoke test | [x] — all flows above |
+
+## UI redesign (v2 — computational learning laboratory)
+
+Full redesign of every screen to the dark-first "signal line" design language (graphite surfaces, teal execution / blue analytical / amber achievement signals, Space Grotesk + Inter + JetBrains Mono). Verified in-browser for both roles; production build clean.
+
+| Item | Status | Notes |
+|---|---|---|
+| Design tokens + primitives (`globals.css`, `components/ui-kit.tsx`) | [x] | panels, signal lines, micro-grid, meters, node topology, stage strip, loaders |
+| 3D hero + simulation canvases (`components/signal-hero.tsx`, `lib/graph-spec.ts`) | [x] | R3F graph with playback states, 2D SVG fallback, WebGL error boundary |
+| Bespoke visualizations (`components/viz.tsx`) | [x] | Mastery Map, intelligence curve, node chain, execution markers, class heatmap, concept graph, cursor-reactive login network |
+| Nav rail around the four verbs (UNDERSTAND / TEST / IMPLEMENT / TRACK) | [x] | expands on hover, animated active signal bar |
+| Landing (3D hero + loop + algorithm index), Login (reactive network) | [x] | public routes; authed users bounce to their workspace |
+| Dashboard: Mastery Map, resume protocol, grasp curve, signal log | [x] | continue-topic falls back to first incomplete stage |
+| Syllabus navigator + topic detail (ghost model header, 3-stage pipeline) | [x] | stage strips per topic, segmented filters |
+| Visualizer: 3D model, step ruler, rate control, state/pseudocode panel, presentation mode | [x] | `?present=1` or toggle; used by faculty "PROJECT" shortcuts |
+| Adaptive quiz: probes, live grasp, verdicts, results with weak concepts + recommendation | [x] | difficulty adaptation verified (easy → medium) |
+| Code workspace: Monaco (custom theme), 4 languages, execution pipeline, progressive test reveal | [x] | Judge0 unconfigured → clean error state (set `JUDGE0_URL` to enable runs) |
+| Faculty: tick dial / topology metrics, Class Learning Map heatmap, ConceptGraph, registry filter | [x] | weak topics = API bottom-3, amber-coded |
+| Backend fix: `GET /api/topics/:id` was double-prefixed (`/topics/topics/:id`) | [x] | route corrected in `backend/src/modules/syllabus/syllabus.routes.js` |
 
 ## Still needs your configuration
 - **Judge0**: set `JUDGE0_URL` + `JUDGE0_API_KEY` in `backend/.env` (e.g. RapidAPI Judge0 CE). Until then, Run returns a clear 503 message — everything else works.

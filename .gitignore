@@ -23,3 +23,7 @@ next-dev.log
 .DS_Store
 *.tsbuildinfo
 .freebuff/
+
+# local dev artifacts
+.shots/
+backend-run.log
